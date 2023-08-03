@@ -3,8 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation as R
 
-# Contains functions to calculate the relative and absolute orientation error
-# between the estimated orientation and the true orientation
+# Contains functions to calculate the relative and absolute pose error
 
 def calc_relative_orientation_difference(estimated_rotation, true_rotation, window_size=0):
     '''
@@ -72,6 +71,46 @@ def calculate_absolute_yaw_error(estimated_rotation, true_rotation):
     diff_euler = diff.as_euler('xyz', degrees=False)
     yaw_error = diff_euler[:,2]
     return yaw_error
+
+#########################33
+# Functions for calculating the pose error
+# TODO: Make these more pythonic (eg. interpolate_line is already done by pandas; 1d rms error is trivial with numpy)
+# TODO: Add better docstrings
+def interpolate_line(data):
+    mask = np.array([data!=0]).reshape(-1, 1) # mask with [N, 1] boolean ndarray
+    if any(mask):    
+        zero_idx = np.where(data == 0)[0]
+        non_zero_idx = np.array(np.nonzero(data)[0])
+        interpolate_array = np.interp(zero_idx, non_zero_idx, data[mask])  # np.interp(idx of you want to interpolate, idx of existing array, existing value) 
+        for idx_interpolate, idx_array in enumerate(zero_idx):
+            data[idx_array] = interpolate_array[idx_interpolate]
+    return data
+
+def get_1d_rms_error(data, target):
+    return np.sqrt(((data-target)**2).mean(axis=0))
+
+def get_3d_euclidean_norm(data, target):
+    return np.linalg.norm((data-target), axis=1)
+
+def get_3d_rms_error(norm_array):
+    return np.sqrt(norm_array).mean(axis=0)
+
+def get_RT_matrix(ref_matrix, target_matrix):
+    # Translate into homogeneour coorinidate
+    ref_matrix = np.hstack((ref_matrix, np.ones((ref_matrix.shape[0], 1))))
+    target_matrix = np.hstack((target_matrix, np.ones((target_matrix.shape[0], 1))))
+    print("Check two matrices are in same dimension: ", ref_matrix.shape==target_matrix)
+    
+    # Find mininum-two-norm solution by solving overdetermined least-square problem
+    rotation_matrix, residuals, rank, min_singular_value = np.linalg.lstsq(ref_matrix, target_matrix, rcond=None)
+    print("Final Rotation matirx = \n", rotation_matrix)
+    print("norm from rts to imu = ", np.linalg.norm(rotation_matrix))
+    print("norm from imu to rts = ", np.linalg.norm(np.linalg.pinv(rotation_matrix)))
+    print("Residuals = ", residuals)
+    print("Rank = ", rank)
+    print("min_singular_value = ", min_singular_value)
+    return rotation_matrix
+
 
 
 def main():
