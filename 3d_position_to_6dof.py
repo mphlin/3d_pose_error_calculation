@@ -181,46 +181,80 @@ df_out['ros.seconds'] = (df['__time'] - df['__time'][0])
 df_out.to_csv(output_file, index=False)
 
 # ############################
-# plot the trajectory and orientation
+# plot the trajectory with just the tangent vectors and vectors perpendicular to the asset
 fig = plt.figure()
-ax = plt.axes(projection='3d')
-ax.set_box_aspect((1,1,5))
-ax.grid(False)
-ax.set_xlabel('x (m)')
-ax.set_ylabel('y (m)')
-ax.set_zlabel('z (m)')
-ax.set_title('Trajectory and Orientation')
-
+ax5 = plt.axes(projection='3d')
+ax5.set_box_aspect((1,1,5))
+ax5.grid(False)
+ax5.set_xlabel('x (m)')
+ax5.set_ylabel('y (m)')
+ax5.set_zlabel('z (m)')
+ax5.set_title('Trajectory and Tangent Vectors')
 traj_start = len(df['/api_radian/pose/pose/position/x'])//2 # - 1000
 traj_end = -1
 plot_interval = 350
-
-# robot_from_api_rotation = robot_start_from_api_rotation * robot_from_robot_start_rotation 
-vo_robot_from_api_rotation = robot_start_from_api_rotation * vo_robot_from_robot_start_rotation
 positions = df_out[['api.position.x', 'api.position.y', 'api.position.z']].to_numpy()
-plot_trajectory(ax, positions, start_index=traj_start, end_index=traj_end)
-plot_orientations(ax, positions, robot_from_api_rotation, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval)
-plot_orientations(ax, positions, vo_robot_from_api_rotation, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval, linestyle='--')
+plot_trajectory(ax5, positions, start_index=traj_start, end_index=traj_end)
+plot_vectors(ax5, positions, robot_y, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval)
+plot_vectors(ax5, positions, robot_z, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval, linestyle='--')
 
 
-# # Make a third plot with the trajectory and the cylinder
-# fig3 = plt.figure()
-# ax3 = plt.axes(projection='3d')
-# ax3.scatter3D(df['/api_radian/pose/pose/position/x'], df['/api_radian/pose/pose/position/y'], df['/api_radian/pose/pose/position/z'], c=df['__time'], cmap='Greens')
-# ax3.set_title('Points and Cylinder')
-# ax3.set_box_aspect((1,1,1))
-# ax3.grid(False)
+# # plot the trajectory and orientation
+# fig = plt.figure()
+# ax = plt.axes(projection='3d')
+# ax.set_box_aspect((1,1,5))
+# ax.grid(False)
+# ax.set_xlabel('x (m)')
+# ax.set_ylabel('y (m)')
+# ax.set_zlabel('z (m)')
+# ax.set_title('Trajectory and Orientation')
 
-# Xc,Yc,Zc = generate_vertical_cylinder_points(estimated_parameters[0], estimated_parameters[1], estimated_parameters[2], 4000)
-# ax3.plot_surface(Xc, Yc, Zc, alpha=0.5)
+# traj_start = len(df['/api_radian/pose/pose/position/x'])//2 # - 1000
+# traj_end = -1
+# plot_interval = 350
 
-# # # set x limits and y limits
-# ax3.set_xlim([-1800,-1300])
-# ax3.set_ylim([600,1100])
+# # robot_from_api_rotation = robot_start_from_api_rotation * robot_from_robot_start_rotation 
+# vo_robot_from_api_rotation = robot_start_from_api_rotation * vo_robot_from_robot_start_rotation
+# positions = df_out[['api.position.x', 'api.position.y', 'api.position.z']].to_numpy()
+# plot_trajectory(ax, positions, start_index=traj_start, end_index=traj_end)
+# plot_orientations(ax, positions, robot_from_api_rotation, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval)
+# plot_orientations(ax, positions, vo_robot_from_api_rotation, start_index=traj_start, end_index=traj_end, scale=0.2, plot_interval=plot_interval, linestyle='--')
 
-# ax3.set_xlabel('x (mm)')
-# ax3.set_ylabel('y (mm)')
-# ax3.set_zlabel('z (mm)')
+
+# Make a plot with the smoothed trajectory as a scatterplot, colored by the 'forward' column (whether moving up or down)
+fig6 = plt.figure()
+ax6 = plt.axes(projection='3d')
+ax6.scatter3D(df_out['api.position.x'], df_out['api.position.y'], df_out['api.position.z'], c=df['forward'], cmap='coolwarm')
+ax6.set_title('Smoothed Trajectory by Forward/Backward') 
+ax6.set_box_aspect((1,1,5))
+ax6.grid(False)
+ax6.set_xlabel('x (m)')
+ax6.set_ylabel('y (m)')
+ax6.set_zlabel('z (m)')
+# add a colorbar
+cbar = fig6.colorbar(ax6.collections[0])
+cbar.set_ticks([-1, 0, 1])
+cbar.set_ticklabels(['Backward', 'Stationary', 'Forward'])
+cbar.set_label('Movement Direction')
+
+# Make a third plot with the trajectory and the cylinder
+fig3 = plt.figure()
+ax3 = plt.axes(projection='3d')
+ax3.scatter3D(df['/api_radian/pose/pose/position/x'], df['/api_radian/pose/pose/position/y'], df['/api_radian/pose/pose/position/z'], c=df['__time'], cmap='Greens')
+ax3.set_title('Points and Cylinder')
+ax3.set_box_aspect((1,1,1))
+ax3.grid(False)
+
+Xc,Yc,Zc = generate_vertical_cylinder_points(estimated_parameters[0], estimated_parameters[1], estimated_parameters[2], 4000)
+ax3.plot_surface(Xc, Yc, Zc, alpha=0.5)
+
+# # set x limits and y limits
+ax3.set_xlim([-1800,-1300])
+ax3.set_ylim([600,1100])
+
+ax3.set_xlabel('x (mm)')
+ax3.set_ylabel('y (mm)')
+ax3.set_zlabel('z (mm)')
 
 
 # Make a plot that shows the ground-truth yaw and the VO yaw for the trajectory
